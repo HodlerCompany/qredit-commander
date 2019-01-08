@@ -81,7 +81,7 @@ GIT_ORIGIN=master
 
 LOC_SERVER="http://localhost:4101"
 
-ADDRESS=""
+ADDRESS="QaiQrZap8G91mbE32JxL6gboxQXDG3V2Na"
 
 SNAPDIR="$HOME/snapshots"
 
@@ -219,14 +219,14 @@ function proc_vars {
 
 #PSQL Queries
 query() {
-PUBKEY="$(psql -d qredit_db -t -c 'SELECT ENCODE("publicKey",'"'"'hex'"'"') as "publicKey" FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | xargs)"
-DNAME="$(psql -d qredit_db -t -c 'SELECT username FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | xargs)"
-PROD_BLOCKS="$(psql -d qredit_db -t -c 'SELECT producedblocks FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | xargs)"
-MISS_BLOCKS="$(psql -d qredit_db -t -c 'SELECT missedblocks FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | xargs)"
-#BALANCE="$(psql -d qredit_db -t -c 'SELECT (balance/100000000.0) as balance FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | sed -e 's/^[[:space:]]*//')"
-BALANCE="$(psql -d qredit_db -t -c 'SELECT to_char(("balance"/100000000.0), '"'FM 999,999,999,990D00000000'"' ) as balance FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | xargs)"
-HEIGHT="$(psql -d qredit_db -t -c 'SELECT height FROM blocks ORDER BY HEIGHT DESC LIMIT 1;' | xargs)"
-RANK="$(psql -d qredit_db -t -c 'WITH RANK AS (SELECT DISTINCT "publicKey", "vote", "round", row_number() over (order by "vote" desc nulls last) as "rownum" FROM mem_delegates where "round" = (select max("round") from mem_delegates) ORDER BY "vote" DESC) SELECT "rownum" FROM RANK WHERE "publicKey" = '"'0369093c456fd8704ae4e401f3b3a3ad1581453cf7feb34c513a2f599f9adf6aac'"';' | xargs)"
+PUBKEY="$(psql -d qredit_mainnet -t -c 'SELECT ENCODE("publicKey",'"'"'hex'"'"') as "publicKey" FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | xargs)"
+DNAME="$(psql -d qredit_mainnet -t -c 'SELECT username FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | xargs)"
+PROD_BLOCKS="$(psql -d qredit_mainnet -t -c 'SELECT producedblocks FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | xargs)"
+MISS_BLOCKS="$(psql -d qredit_mainnet -t -c 'SELECT missedblocks FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | xargs)"
+#BALANCE="$(psql -d qredit_mainnet -t -c 'SELECT (balance/100000000.0) as balance FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | sed -e 's/^[[:space:]]*//')"
+BALANCE="$(psql -d qredit_mainnet -t -c 'SELECT to_char(("balance"/100000000.0), '"'FM 999,999,999,990D00000000'"' ) as balance FROM mem_accounts WHERE "address" = '"'"$ADDRESS"'"' ;' | xargs)"
+HEIGHT="$(psql -d qredit_mainnet -t -c 'SELECT height FROM blocks ORDER BY HEIGHT DESC LIMIT 1;' | xargs)"
+RANK="$(psql -d qredit_mainnet -t -c 'WITH RANK AS (SELECT DISTINCT "publicKey", "vote", "round", row_number() over (order by "vote" desc nulls last) as "rownum" FROM mem_delegates where "round" = (select max("round") from mem_delegates) ORDER BY "vote" DESC) SELECT "rownum" FROM RANK WHERE "publicKey" = '"'0369093c456fd8704ae4e401f3b3a3ad1581453cf7feb34c513a2f599f9adf6aac'"';' | xargs)"
 }
 
 # Stats Address Change
@@ -603,7 +603,7 @@ if [ "$(ls -A $SNAPDIR)" ]; then
         ## Numeric checks
                 if [ $REPLY -le ${#snapshots[*]} ]; then
                         echo -e "$(yellow "\n         Restoring snapshot ${snapshots[$((REPLY-1))]}")\n"
-			pg_restore -O -j 8 -d qredit_db $SNAPDIR/${snapshots[$(($REPLY-1))]} 2>/dev/null
+			pg_restore -O -j 8 -d qredit_mainnet $SNAPDIR/${snapshots[$(($REPLY-1))]} 2>/dev/null
 			echo -e "$(green "   Snapshot ${snapshots[$(($REPLY-1))]} was restored sucessfuly")\n"
                 else
                         echo -e "$(red "\n        Value is out of list range!\n")"
@@ -627,7 +627,7 @@ else
                         if [[ "$YN" =~ [Yy]$ ]]; then
                                 #here calling the db_restore function
 				echo -e "$(yellow "\n   Restoring $SNAPDIR/current ... ")"
-                                pg_restore -O -j 8 -d qredit_db $SNAPDIR/current 2>/dev/null
+                                pg_restore -O -j 8 -d qredit_mainnet $SNAPDIR/current 2>/dev/null
 				echo -e "$(green "\n    Current snapshot has been restored\n")"
                         fi
         else
@@ -722,13 +722,15 @@ function create_db {
         sleep 1
 #       sudo -u postgres dropdb --if-exists qredit_db
 #       sleep 1
+#	sudo -u postgres dropdb --if-exists qredit_mainnet
+#	sleep 1
 #       sudo -u postgres dropuser --if-exists $USER # 2>&1
 #       sleep 1
 	sudo -u postgres psql -c "update pg_database set encoding = 6, datcollate = 'en_US.UTF8', datctype = 'en_US.UTF8' where datname = 'template0';" >&- 2>&-
 	sudo -u postgres psql -c "update pg_database set encoding = 6, datcollate = 'en_US.UTF8', datctype = 'en_US.UTF8' where datname = 'template1';" >&- 2>&-
         sudo -u postgres psql -c "CREATE USER $USER WITH PASSWORD 'password' CREATEDB;" >&- 2>&-
         sleep 1
-        createdb qredit_db
+        createdb qredit_mainnet
 }
 
 # Check if DB exists
@@ -738,7 +740,7 @@ function db_exists {
                 sudo service postgresql start
         fi
 
-        if [[ ! $(sudo -u postgres psql qredit_db -c '\q' 2>&1) ]]; then
+        if [[ ! $(sudo -u postgres psql qredit_mainnet -c '\q' 2>&1) ]]; then
                 read -r -n 1 -p "$(yellow "  Database exists! Do you want to drop it? (y/n):") " YN
                         if [[ "$YN" =~ [Yy]$ ]]; then
                                 drop_db;
@@ -773,7 +775,7 @@ function drop_db {
         if [ -z "$pgres" ]; then
                 sudo service postgresql start
         fi
-        dropdb --if-exists qredit_db
+        dropdb --if-exists qredit_mainnet
 }
 
 function drop_user {
@@ -1077,7 +1079,7 @@ sub_menu
 
 # Create Snapshot
 eight(){
-QreditNetwork="db"
+QreditNetwork="mainnet"
 QreditNodeDirectory="$HOME/qredit-full-node"
 SnapshotDirectory="$HOME/snapshots"
 
