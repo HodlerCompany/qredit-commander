@@ -93,7 +93,7 @@ re='^[0-9]+$' # For numeric checks
 log="install_qredit.log"
 
 #~ SEED NODES ~#
-seed0=("http://185.85.18.192:4100" "seed01")
+seed0=("http://136.144.215.24:4101" "seed01")
 
 #~ API CALL ~#
 apicall="/api/loader/status/sync"
